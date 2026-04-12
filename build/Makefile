@@ -117,24 +117,24 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named RockPulsePoC
+# Target rules for targets named RockPulseAPI
 
 # Build rule for target.
-RockPulsePoC: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 RockPulsePoC
-.PHONY : RockPulsePoC
+RockPulseAPI: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 RockPulseAPI
+.PHONY : RockPulseAPI
 
 # fast build rule for target.
-RockPulsePoC/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/RockPulsePoC.dir/build.make CMakeFiles/RockPulsePoC.dir/build
-.PHONY : RockPulsePoC/fast
+RockPulseAPI/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/RockPulseAPI.dir/build.make CMakeFiles/RockPulseAPI.dir/build
+.PHONY : RockPulseAPI/fast
 
 main.o: main.cpp.o
 .PHONY : main.o
 
 # target to build an object file
 main.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/RockPulsePoC.dir/build.make CMakeFiles/RockPulsePoC.dir/main.cpp.o
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/RockPulseAPI.dir/build.make CMakeFiles/RockPulseAPI.dir/main.cpp.o
 .PHONY : main.cpp.o
 
 main.i: main.cpp.i
@@ -142,7 +142,7 @@ main.i: main.cpp.i
 
 # target to preprocess a source file
 main.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/RockPulsePoC.dir/build.make CMakeFiles/RockPulsePoC.dir/main.cpp.i
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/RockPulseAPI.dir/build.make CMakeFiles/RockPulseAPI.dir/main.cpp.i
 .PHONY : main.cpp.i
 
 main.s: main.cpp.s
@@ -150,7 +150,7 @@ main.s: main.cpp.s
 
 # target to generate assembly for a file
 main.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/RockPulsePoC.dir/build.make CMakeFiles/RockPulsePoC.dir/main.cpp.s
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/RockPulseAPI.dir/build.make CMakeFiles/RockPulseAPI.dir/main.cpp.s
 .PHONY : main.cpp.s
 
 # Help Target
@@ -161,7 +161,7 @@ help:
 	@echo "... depend"
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
-	@echo "... RockPulsePoC"
+	@echo "... RockPulseAPI"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"

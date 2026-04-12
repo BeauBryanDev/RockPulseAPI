@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+
+  db:
+    image: postgres:15
+    container_name: rockpulse_db
+    restart: always
+    environment:
+      POSTGRES_USER: beau_admin
+      POSTGRES_PASSWORD: rock_password_2026
+      POSTGRES_DB: rockpulse_metrics
+    ports:
+      - "5434:5432"   # Host 5434 -> Container 5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U beau_admin -d rockpulse_metrics"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: .
+    container_name: rockpulse_backend
+    restart: on-failure
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      DB_CONNECTION: "host=db port=5432 dbname=rockpulse_metrics user=beau_admin password=rock_password_2026"
+    volumes:
+      - ./images:/app/images       # Input images
+      - ./outputs:/app/outputs     # Processed output images (annotated PNGs)
+
+volumes:
+  postgres_data:

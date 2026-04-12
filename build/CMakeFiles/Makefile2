@@ -63,7 +63,7 @@ CMAKE_BINARY_DIR = /home/beaunix/RockPulsePoC/build
 # Directory level rules for the build root directory
 
 # The main recursive "all" target.
-all: CMakeFiles/RockPulsePoC.dir/all
+all: CMakeFiles/RockPulseAPI.dir/all
 .PHONY : all
 
 # The main recursive "preinstall" target.
@@ -71,34 +71,34 @@ preinstall:
 .PHONY : preinstall
 
 # The main recursive "clean" target.
-clean: CMakeFiles/RockPulsePoC.dir/clean
+clean: CMakeFiles/RockPulseAPI.dir/clean
 .PHONY : clean
 
 #=============================================================================
-# Target rules for target CMakeFiles/RockPulsePoC.dir
+# Target rules for target CMakeFiles/RockPulseAPI.dir
 
 # All Build rule for target.
-CMakeFiles/RockPulsePoC.dir/all:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/RockPulsePoC.dir/build.make CMakeFiles/RockPulsePoC.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/RockPulsePoC.dir/build.make CMakeFiles/RockPulsePoC.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/beaunix/RockPulsePoC/build/CMakeFiles --progress-num=1,2 "Built target RockPulsePoC"
-.PHONY : CMakeFiles/RockPulsePoC.dir/all
+CMakeFiles/RockPulseAPI.dir/all:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/RockPulseAPI.dir/build.make CMakeFiles/RockPulseAPI.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/RockPulseAPI.dir/build.make CMakeFiles/RockPulseAPI.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=/home/beaunix/RockPulsePoC/build/CMakeFiles --progress-num=1,2 "Built target RockPulseAPI"
+.PHONY : CMakeFiles/RockPulseAPI.dir/all
 
 # Build rule for subdir invocation for target.
-CMakeFiles/RockPulsePoC.dir/rule: cmake_check_build_system
+CMakeFiles/RockPulseAPI.dir/rule: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/beaunix/RockPulsePoC/build/CMakeFiles 2
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/RockPulsePoC.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/RockPulseAPI.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /home/beaunix/RockPulsePoC/build/CMakeFiles 0
-.PHONY : CMakeFiles/RockPulsePoC.dir/rule
+.PHONY : CMakeFiles/RockPulseAPI.dir/rule
 
 # Convenience name for target.
-RockPulsePoC: CMakeFiles/RockPulsePoC.dir/rule
-.PHONY : RockPulsePoC
+RockPulseAPI: CMakeFiles/RockPulseAPI.dir/rule
+.PHONY : RockPulseAPI
 
 # clean rule for target.
-CMakeFiles/RockPulsePoC.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/RockPulsePoC.dir/build.make CMakeFiles/RockPulsePoC.dir/clean
-.PHONY : CMakeFiles/RockPulsePoC.dir/clean
+CMakeFiles/RockPulseAPI.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/RockPulseAPI.dir/build.make CMakeFiles/RockPulseAPI.dir/clean
+.PHONY : CMakeFiles/RockPulseAPI.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

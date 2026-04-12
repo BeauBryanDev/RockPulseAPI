@@ -1,0 +1,165 @@
+========================================================
+  RockPulseAPI — Proposed Project Structure
+  Mining Rock Detection & Metrology REST API
+  Stack: C++17 · Crow · OpenCV · ONNX Runtime · PostgreSQL
+         TypeScript · React · Axios · Tailwind · Vite
+========================================================
+
+RockPulseAPI/
+│
+├── CMakeLists.txt                  # Build: supports local (./ort) and Docker (-DONNXRUNTIME_ROOT)
+├── Dockerfile                      # Multi-stage: builder (Ubuntu 22.04) + slim runtime
+├── docker-compose.yml              # backend + postgres, bind mounts for images/ and outputs/
+├── .dockerignore                   # Excludes build/, ort/, .git/ from Docker context
+│
+├── .vscode/
+│   └── c_cpp_properties.json       # IntelliSense paths: /usr/include/opencv4 + ort/include
+│
+│
+├── src/                            # All C++ backend source
+│   │
+│   ├── main.cpp                    # Entry point: init ORT session, register Crow routes, start server
+│   │
+│   ├── api/                        # HTTP route handlers (thin layer, no business logic here)
+│   │   ├── DetectHandler.hpp       # POST /api/detect  - receive image, call Detector, return JSON
+│   │   ├── DetectHandler.cpp
+│   │   ├── HealthHandler.hpp       # GET  /api/health  - liveness check, returns {"status":"ok"}
+│   │   └── MetricsHandler.hpp      # GET  /api/detections      - list from DB
+│   │                               # GET  /api/detections/{id} - single record from DB
+│   │
+│   ├── inference/                  # Core vision pipeline
+│   │   ├── Detector.hpp            # Wraps Ort::Session (loaded once at startup, thread-safe)
+│   │   ├── Detector.cpp            #   preprocess() -> run() -> parseOutput0() -> NMSBoxes()
+│   │   ├── Geometry.hpp            # Per-detection metrics from segmentation mask
+│   │   └── Geometry.cpp            #   assembleMask() -> OBB -> area/perimeter -> sphericity -> volume
+│   │
+│   ├── db/                         # PostgreSQL persistence
+│   │   ├── Database.hpp            # libpqxx connection pool wrapper
+│   │   ├── Database.cpp            #   saveDetectionBatch(), getDetection(), listDetections()
+│   │   └── schema.sql              # CREATE TABLE detection_jobs + rock_detections
+│   │
+│   └── utils/
+│       ├── ImageUtils.hpp          # imdecode from raw bytes, imencode to PNG, base64 helpers
+│       └── ImageUtils.cpp
+│
+│
+├── model/
+│   └── yolo_v8_nano_seg.onnx       # Fine-tuned YOLOv8-nano-seg (baked into Docker image)
+│
+├── images/                         # Bind mount: drop test images here for local dev
+│   └── rock_03.png
+│
+├── outputs/                        # Bind mount: annotated output PNGs saved here by the API
+│   └── .gitkeep
+│
+├── ort/                            # ONNX Runtime SDK for LOCAL DEV ONLY (excluded by .dockerignore)
+│   ├── include/
+│   └── lib/
+│
+└── frontend/                       # React + TypeScript (implement after backend is stable)
+    ├── public/
+    ├── src/
+    │   ├── main.tsx                # Vite entry
+    │   ├── App.tsx
+    │   │
+    │   ├── api/
+    │   │   └── rockpulse.ts        # Axios client: postDetect(), getDetections(), getDetectionById()
+    │   │
+    │   ├── components/
+    │   │   ├── UploadZone.tsx      # Drag & drop image upload (calls POST /api/detect)
+    │   │   ├── DetectionCanvas.tsx # Draws bounding boxes over the returned image
+    │   │   └── MetricsTable.tsx    # Renders ID, Area, L, W, Sphericity, Volume per rock
+    │   │
+    │   └── pages/
+    │       ├── Dashboard.tsx       # Main page: upload + live results
+    │       └── History.tsx         # Past detection jobs from DB
+    │
+    ├── package.json
+    ├── vite.config.ts
+    └── tsconfig.json
+
+
+========================================================
+  API Endpoints (backend contract for the frontend)
+========================================================
+
+POST   /api/detect
+       Body: multipart/form-data { image: <file> }
+       Returns:
+       {
+           job_id:       "uuid",
+           rock_count:   38,
+           output_image: "outputs/uuid.png",
+           detections: [
+               {
+                   id:         1,
+                   bbox:       { x, y, w, h },
+                   confidence: 0.91,
+                   area_cm2:   222.6,
+                   L_cm:       17.8,
+                   W_cm:       16.7,
+                   sphericity: 0.80,
+                   volume_cm3: 2684.9
+               },
+               ...
+           ]
+       }
+
+GET    /api/health
+       Returns: { "status": "ok", "model": "yolo_v8_nano_seg" }
+
+GET    /api/detections
+       Returns: [ { job_id, timestamp, rock_count, image_path }, ... ]
+
+GET    /api/detections/{job_id}
+       Returns: full detection payload (same shape as POST response)
+
+
+========================================================
+  DB Schema (schema.sql)
+========================================================
+
+  detection_jobs
+    job_id        UUID PRIMARY KEY
+    created_at    TIMESTAMP
+    image_path    TEXT
+    output_path   TEXT
+    rock_count    INT
+
+  rock_detections
+    id            SERIAL PRIMARY KEY
+    job_id        UUID REFERENCES detection_jobs(job_id)
+    bbox_x        INT
+    bbox_y        INT
+    bbox_w        INT
+    bbox_h        INT
+    confidence    REAL
+    area_cm2      REAL
+    L_cm          REAL
+    W_cm          REAL
+    sphericity    REAL
+    volume_cm3    REAL
+
+
+========================================================
+  Key Architecture Notes
+========================================================
+
+1. Ort::Session is created ONCE in main.cpp at startup and passed
+   (shared_ptr) into DetectHandler. Never load the model per request.
+
+2. Crow handles multi-threaded requests out of the box.
+   Ort::Session::Run() is thread-safe, so concurrent /api/detect
+   calls work without extra locking.
+
+3. Output images are saved to /app/outputs/{job_id}.png inside the
+   container, immediately visible on the host via the bind mount
+   ./outputs:/app/outputs in docker-compose.yml.
+
+4. libpqxx connection pool: use at least 4 connections to avoid
+   DB bottlenecks under concurrent API load.
+
+5. Frontend sends POST /api/detect with raw image (Axios FormData).
+   Response JSON contains all metrics. DetectionCanvas.tsx overlays
+   boxes on the image client-side using the bbox coordinates in JSON.
+   No page reload needed.

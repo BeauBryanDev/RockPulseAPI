@@ -3,6 +3,8 @@
 #include <onnxruntime_cxx_api.h>
 #include <iostream>
 #include <vector>
+#include <fstream>
+#include <cmath>
 
 using namespace cv;
 using namespace std;
@@ -11,24 +13,26 @@ int main() {
     const string modelPath  = "model/yolo_v8_nano_seg.onnx";
     const string imagePath  = "images/rock_03.png";
     const string outputPath = "output_detections.png";
+    const string txtPath    = "outputs.txt";
 
     const float CONF_THRESH = 0.80f;
     const float NMS_THRESH  = 0.20f;
     const int   INPUT_W     = 640;
     const int   INPUT_H     = 640;
+    
+    // SCALE FACTOR : 64cm / 640px = 0.1 cm/px
+    const float K_SCALE     = 0.1f; 
 
-    // 1. Load image
     Mat frame = imread(imagePath);
     if (frame.empty()) {
-        cerr << "Error: Unable to load image: " << imagePath << endl;
+        cerr << "Error: No se pudo cargar la imagen." << endl;
         return -1;
     }
-    cout << "Image loaded: " << frame.cols << "x" << frame.rows << endl;
 
     float scaleX = (float)frame.cols / INPUT_W;
     float scaleY = (float)frame.rows / INPUT_H;
 
-    // 2. Preprocess: resize -> normalize -> HWC to NCHW
+   // 2. Preprocess: resize -> normalize -> HWC to NCHW
     Mat resized;
     resize(frame, resized, Size(INPUT_W, INPUT_H));
     resized.convertTo(resized, CV_32F, 1.0 / 255.0);
@@ -95,7 +99,7 @@ int main() {
         boxes.push_back(Rect(x1, y1, bw, bh));
         scores.push_back(conf);
 
-        //  Extraer los 32 coeficientes de la máscara
+        // GET ALL 32 MASK COEFFICIENTS FOR THIS PREDICTION
         vector<float> coeffs(32);
         for (int c = 0; c < 32; ++c) {
             coeffs[c] = data0[(5 + c) * numPreds + i];
@@ -110,72 +114,82 @@ int main() {
     dnn::NMSBoxes(boxes, scores, CONF_THRESH, NMS_THRESH, indices);
     cout << "Detections after NMS: " << indices.size() << endl;
 
-    // 7. Preparar Prototipos (Output1)
+    ofstream outFile(txtPath);
+    if (!outFile.is_open()) {
+        cerr << "Error al crear outputs.txt" << endl;
+        return -1;
+    }
+
+    outFile << "ID,Area_px,L_px,W_px,Area_cm2,L_cm,W_cm,Sphericity,Volume_cm3" << endl;
+
+    // REbuild protoMap from output1
     float* data1 = outputs[1].GetTensorMutableData<float>();
-    // Convertir el tensor [1, 32, 160, 160] a una matriz 2D [32, 25600]
     Mat protoMap(32, 160 * 160, CV_32F, data1);
 
-    // 8. Mask Assembly & Draw results
+    int rockCount = 0;
     for (int idx : indices) {
-        const Rect& box  = boxes[idx];
-        float conf = scores[idx];
-
-        // --- INICIO CALCULO DE MASCARA ---
-        // Crear matriz [1, 32] con los coeficientes de esta roca
+        rockCount++;
+        const Rect& box = boxes[idx];
+        
+        // --- MASK ASSEMBLY 
         Mat coeff(1, 32, CV_32F, maskCoeffs[idx].data());
-
-        // Producto matricial: [1, 32] * [32, 25600] = [1, 25600]
-        Mat maskMat = coeff * protoMap; 
-
-        // Reformatear a [160, 160]
-        maskMat = maskMat.reshape(1, 160);
-
-        // Aplicar Sigmoide
+        Mat maskMat = Mat(coeff * protoMap).reshape(1, 160);
         cv::exp(-maskMat, maskMat);
         maskMat = 1.0f / (1.0f + maskMat);
 
-        // Redimensionar la máscara de 160x160 al tamaño original de la imagen
         Mat maskOriginal;
         resize(maskMat, maskOriginal, Size(frame.cols, frame.rows));
-
-        // Recortar la máscara solo al bounding box
-        Mat cropMask = maskOriginal(box);
-
-        // Binarizar la máscara (umbral de 0.5)
         Mat binMask;
-        threshold(cropMask, binMask, 0.5, 255, THRESH_BINARY);
+        threshold(maskOriginal(box), binMask, 0.5, 255, THRESH_BINARY);
         binMask.convertTo(binMask, CV_8U);
 
-        // --- CALCULAR AREA ---
-        int areaPixels = countNonZero(binMask);
+        // --- GEOMETRÍA AVANZADA ---
+        vector<vector<Point>> contours;
+        findContours(binMask, contours, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
 
-        // --- DIBUJAR ---
-        // Pintar la máscara de azul sobre la imagen original
-        Mat coloredMask = Mat::zeros(box.size(), CV_8UC3);
-        coloredMask.setTo(Scalar(255, 0, 0), binMask); 
-        addWeighted(frame(box), 1.0, coloredMask, 0.5, 0.0, frame(box));
+        if (contours.empty()) continue;
 
-        // Dibujar Box
+        // Encontrar el contorno más grande (la roca principal)
+        auto it = max_element(contours.begin(), contours.end(), 
+                  [](const vector<Point>& a, const vector<Point>& b) {
+                      return contourArea(a) < contourArea(b);
+                  });
+
+        // 1. Rectángulo Rotado (OBB)
+        RotatedRect rRect = minAreaRect(*it);
+        float L_px = max(rRect.size.width, rRect.size.height);
+        float W_px = min(rRect.size.width, rRect.size.height);
+
+        // 2. Área y Perímetro en px
+        double area_px = countNonZero(binMask);
+        double peri_px = arcLength(*it, true);
+
+        // 3. Conversión a CM
+        float L_cm = L_px * K_SCALE;
+        float W_cm = W_px * K_SCALE;
+        float area_cm2 = area_px * (K_SCALE * K_SCALE);
+
+        // 4. Esfericidad (Cox Index)
+        double sphericity = (4 * CV_PI * area_px) / (peri_px * peri_px);
+
+        // 5. Volumen Elipsoide (H = promedio de L y W)
+        float H_cm = (L_cm + W_cm) / 2.0f;
+        float volume_cm3 = (4.0f/3.0f) * CV_PI * (L_cm/2.0f) * (W_cm/2.0f) * (H_cm/2.0f);
+
+        // --- GUARDAR RESULTADOS ---
+        outFile << rockCount << "," << area_px << "," << L_px << "," << W_px << ","
+                << area_cm2 << "," << L_cm << "," << W_cm << "," 
+                << sphericity << "," << volume_cm3 << endl;
+
+        // Dibujar en la imagen
         rectangle(frame, box, Scalar(0, 255, 0), 2);
-
-        // Añadir texto con la confianza y el AREA
-        string label = "Area: " + to_string(areaPixels) + " px";
-        int baseline = 0;
-        Size textSize = getTextSize(label, FONT_HERSHEY_SIMPLEX, 0.55, 1, &baseline);
-
-        rectangle(frame,
-                  Point(box.x, box.y - textSize.height - 6),
-                  Point(box.x + textSize.width, box.y),
-                  Scalar(0, 255, 0), FILLED);
-
-        putText(frame, label,
-                Point(box.x, box.y - 4),
-                FONT_HERSHEY_SIMPLEX, 0.55,
-                Scalar(0, 0, 0), 1);
+        string info = "V: " + to_string((int)volume_cm3) + " cm3";
+        putText(frame, info, Point(box.x, box.y - 5), FONT_HERSHEY_SIMPLEX, 0.4, Scalar(255, 255, 255), 1);
     }
 
+    outFile.close();
     imwrite(outputPath, frame);
-    cout << "Annotated image saved: " << outputPath << endl;
+    cout << "Proceso terminado. Datos guardados en " << txtPath << endl;
 
     return 0;
 }

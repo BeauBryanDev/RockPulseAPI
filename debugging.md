@@ -8,7 +8,7 @@
   executable in build/ was compiled from an older version of the code that still
    referenced images/test_rocks.png. The binary was out of sync with the source.
                                           
-  Fix: make — recompiled the binary.                                            
+  ## Fix: make — recompiled the binary.                                            
    
   ---                                                                           
   2. The second error — OpenCV 4.6.0 can't run YOLOv8-seg
