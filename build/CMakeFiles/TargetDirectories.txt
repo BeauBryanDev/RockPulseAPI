@@ -1,3 +1,0 @@
-/home/beaunix/RockPulsePoC/build/CMakeFiles/RockPulseAPI.dir
-/home/beaunix/RockPulsePoC/build/CMakeFiles/edit_cache.dir
-/home/beaunix/RockPulsePoC/build/CMakeFiles/rebuild_cache.dir
