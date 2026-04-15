@@ -3,11 +3,18 @@ project(RockPulseAPI)
 
 set(CMAKE_CXX_STANDARD 17)
 
-# OpenCV (image I/O, preprocessing, NMS utilities)
+# fetch threads library really important for crow
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
+#  search for OpenCV
 find_package(OpenCV REQUIRED)
 
-# ONNX Runtime: use -D ONNXRUNTIME_ROOT=/opt/onnxruntime (Docker)
-# or falls back to ./ort (local dev)
+#  search for libpqxx (PostgreSQL)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(PQXX REQUIRED libpqxx)
+
+#  ONNX Runtime
 if(DEFINED ONNXRUNTIME_ROOT)
     set(ORT_DIR "${ONNXRUNTIME_ROOT}")
 else()
@@ -15,9 +22,25 @@ else()
 endif()
 
 set(ORT_INCLUDE_DIR "${ORT_DIR}/include")
-set(ORT_LIB        "${ORT_DIR}/lib/libonnxruntime.so")
+find_library(ORT_LIB onnxruntime PATHS "${ORT_DIR}/lib" REQUIRED)
 
-include_directories(${OpenCV_INCLUDE_DIRS} ${ORT_INCLUDE_DIR})
+# Add directories 
+include_directories(
+    ${OpenCV_INCLUDE_DIRS} 
+    ${ORT_INCLUDE_DIR}
+    ${PQXX_INCLUDE_DIRS}
+    ${CMAKE_SOURCE_DIR}/include
+)
 
-add_executable(RockPulseAPI main.cpp)
-target_link_libraries(RockPulseAPI ${OpenCV_LIBRARIES} ${ORT_LIB})
+# R-Compile C++ source files in src/
+file(GLOB_RECURSE SRC_FILES "src/*.cpp")
+
+#Excecute the API
+add_executable(RockPulseAPI main.cpp ${SRC_FILES})
+
+target_link_libraries(RockPulseAPI 
+    ${OpenCV_LIBRARIES} 
+    ${ORT_LIB} 
+    ${PQXX_LIBRARIES}
+    Threads::Threads
+)

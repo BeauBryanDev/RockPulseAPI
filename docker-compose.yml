@@ -6,19 +6,26 @@ services:
     image: postgres:15
     container_name: rockpulse_db
     restart: always
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: beau_admin
-      POSTGRES_PASSWORD: rock_password_2026
-      POSTGRES_DB: rockpulse_metrics
+      POSTGREST_HOST: db
+      POSTGRES_HOST_AUTH_METHOD: md5 
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
     ports:
-      - "5434:5432"   # Host 5434 -> Container 5432
+      - "${DB_PORT}:5432"   # Host 5434 -> Container 5432
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U beau_admin -d rockpulse_metrics"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 10
+    
+    networks:
+      - rocknet
 
   backend:
     build: .
@@ -30,10 +37,30 @@ services:
     ports:
       - "8080:8080"
     environment:
-      DB_CONNECTION: "host=db port=5432 dbname=rockpulse_metrics user=beau_admin password=rock_password_2026"
+      DB_URL : "postgresql://${DB_USER}:${DB_PASS}@db:5432/${DB_NAME}"
+      DB_HOST: "db"
+      DB_PORT: "${DB_PORT}"
+      IMAGE_DIR: "/app/images"
+      OUTPUT_DIR: "/app/outputs"
+      MODEL_PATH: "/app/model/${MODEL_NAME}"
+      BACKEND: "true"
     volumes:
       - ./images:/app/images       # Input images
       - ./outputs:/app/outputs     # Processed output images (annotated PNGs)
+      - ./model:/app/model           # ONNX model files
+      - ./logs:/app/logs             # Logs from the backend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10 
+    
+    networks:
+      - rocknet
+
+networks:
+  rocknet:
+    driver: bridge
 
 volumes:
   postgres_data:
