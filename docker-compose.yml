@@ -15,7 +15,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASS}
       POSTGRES_DB: ${DB_NAME}
     ports:
-      - "${DB_PORT}:5432"   # Host 5434 -> Container 5432
+      - "${DB_PORT_EXTERNAL}:${DB_PORT_INTERNAL}"   # Host 5434 -> Container 5432
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -45,10 +45,10 @@ services:
       MODEL_PATH: "/app/model/${MODEL_NAME}"
       BACKEND: "true"
     volumes:
-      - ./images:/app/images       # Input images
-      - ./outputs:/app/outputs     # Processed output images (annotated PNGs)
-      - ./model:/app/model           # ONNX model files
-      - ./logs:/app/logs             # Logs from the backend
+      - ${IMAGE_DIR}:/app/inputs      # Input images
+      - ${OUTPUT_DIR}:/app/outputs     # Processed output images (annotated PNGs)
+      - ${MODEL_DIR}:/app/models           # ONNX model files
+      - ${LOG_DIR}:/app/logs             # Logs from the backend
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health || exit 1"]
       interval: 5s

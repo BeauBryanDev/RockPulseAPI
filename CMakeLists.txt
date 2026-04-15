@@ -30,6 +30,7 @@ include_directories(
     ${ORT_INCLUDE_DIR}
     ${PQXX_INCLUDE_DIRS}
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/third_party 
 )
 
 # R-Compile C++ source files in src/
@@ -37,10 +38,18 @@ file(GLOB_RECURSE SRC_FILES "src/*.cpp")
 
 #Excecute the API
 add_executable(RockPulseAPI main.cpp ${SRC_FILES})
+list(REMOVE_ITEM SRC_FILES "${CMAKE_SOURCE_DIR}/src/poc_script.cpp")
 
 target_link_libraries(RockPulseAPI 
     ${OpenCV_LIBRARIES} 
     ${ORT_LIB} 
     ${PQXX_LIBRARIES}
+    Threads::Threads
+)
+
+add_executable(RockPulsePoC src/poc_script.cpp)
+target_link_libraries(RockPulsePoC 
+    ${OpenCV_LIBRARIES} 
+    ${ORT_LIB} 
     Threads::Threads
 )

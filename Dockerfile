@@ -7,6 +7,7 @@ RUN apt-get update && apt-get install -y \
     cmake \
     wget \
     git \
+    curl \
     libopencv-dev \
     libpqxx-dev \
     libpq-dev \
@@ -39,19 +40,26 @@ RUN apt-get update && apt-get install -y \
     libopencv-imgcodecs4.5d \
     libopencv-imgproc4.5d \
     libopencv-dnn4.5d \
-    libpqxx-6.4 \
     libpq5 \
+    libpqxx-dev \
     && rm -rf /var/lib/apt/lists/*
 
+
 COPY --from=builder /app/build/RockPulseAPI /app/RockPulseAPI
+#COPY --from=builder /app/build/RockPulsePoC /app/RockPulsePoC
 COPY --from=builder /opt/onnxruntime/lib/libonnxruntime.so* /usr/local/lib/
+COPY --from=builder /app/models /app/models
+COPY --from=builder /app/config /app/config
+COPY --from=builder /app/data/aruco_markers /app/data/aruco_markers
+
 RUN ldconfig
 
-COPY ./model /app/model
+COPY ./model /app/models
 
 # Persistent output directory (bind-mounted from host)
 RUN mkdir -p /app/outputs
 
 EXPOSE 8080
+# IMPORTANT!  Make sur to add  relative path to the model where binary is exceutre when writing rock_detector.cpp
 
 CMD ["./RockPulseAPI"]
