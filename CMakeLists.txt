@@ -14,6 +14,10 @@ find_package(OpenCV REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(PQXX REQUIRED libpqxx)
 
+find_package(OpenSSL REQUIRED)
+target_link_libraries(RockPulseAPI PRIVATE OpenSSL::Crypto)
+
+
 #  ONNX Runtime
 if(DEFINED ONNXRUNTIME_ROOT)
     set(ORT_DIR "${ONNXRUNTIME_ROOT}")

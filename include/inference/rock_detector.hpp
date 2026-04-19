@@ -132,8 +132,6 @@ private:
     std::string     output1_name_;
 };
 
-
-
 } // namespace RockPulse 
 
 
