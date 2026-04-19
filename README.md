@@ -9,7 +9,6 @@
   <img src="https://img.shields.io/badge/ONNX_Runtime-blue?style=flat-square&logo=onnx&logoColor=white&label=ONNX_Runtime&labelColor=black&color=blue" alt="ONNX Runtime">  
   <img src="https://img.shields.io/badge/PostgreSQL-blue?style=flat-square&logo=postgresql&logoColor=white&label=PostgreSQL&labelColor=black&color=blue" alt="PostgreSQL">
   <img src="https://img.shields.io/badge/CMake-blue?style=flat-square&logo=cmake&logoColor=white&label=CMake&labelColor=black&color=blue" alt="CMake">
-  <img src="https://img.shields.io/badge/Git-blue?style=flat-square&logo=git&logoColor=white&label=Git&labelColor=black&color=blue" alt="Git">
   <img src="https://img.shields.io/badge/Docker-blue?style=flat-square&logo=docker&logoColor=white&label=Docker&labelColor=black&color=blue" alt="Docker">
   <img src="https://img.shields.io/badge/Axios-blue?style=flat-square&logo=axios&logoColor=white&label=Axios&labelColor=black&color=blue" alt="Axios">
   <img src="https://img.shields.io/badge/TypeScript-blue?style=flat-square&logo=typescript&logoColor=white&label=TypeScript&labelColor=black&color=blue" alt="TypeScript">
