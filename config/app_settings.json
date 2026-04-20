@@ -28,5 +28,11 @@
     "mask_h": 160,
     "mask_w": 160,
     "intra_threads": 1
-  }
+  },
+
+  "calibration": {
+    "strict_mode": true,
+    "fallback_k": 0.046875
+}
+
 }

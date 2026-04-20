@@ -190,6 +190,13 @@ public:
         const std::string& conveyor_id
     ) const;
 
+    // Updates calibration_marker_cm for a conveyor.
+    // Throws std::runtime_error if conveyor_id not found.
+    void updateConveyorMarker(
+        const std::string& conveyor_id,
+        float              marker_cm
+    ) const;
+
 
     private:
     DBConfig                    config_;

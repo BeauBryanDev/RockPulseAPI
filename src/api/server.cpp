@@ -1,4 +1,5 @@
 #include "api/server.hpp"
+#include "api/handlers/conveyors_handler.hpp"
 #include "api/handlers/detect_handler.hpp"
 #include "api/handlers/detections_handler.hpp"
 #include "api/handlers/granulometry_handler.hpp"
@@ -21,7 +22,7 @@ void CorsMiddleware::before_handle(
     if (req.method == crow::HTTPMethod::Options) {
         res.code = 204;
         res.add_header("Access-Control-Allow-Origin",  "*");
-        res.add_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        res.add_header("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
         res.add_header("Access-Control-Allow-Headers",
                        "Content-Type, X-API-KEY, Authorization");
         res.add_header("Access-Control-Max-Age", "86400");
@@ -35,7 +36,7 @@ void CorsMiddleware::after_handle(
     context&        ctx)
 {
     res.add_header("Access-Control-Allow-Origin",  "*");
-    res.add_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    res.add_header("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
     res.add_header("Access-Control-Allow-Headers",
                    "Content-Type, X-API-KEY, Authorization");
 }
@@ -155,6 +156,17 @@ void Server::registerRoutes()
                 const std::string&       job_id,
                 AuthMiddleware::context& auth_ctx) {
             res = Handlers::granulometry(req, job_id, auth_ctx, *db_);
+            res.end();
+        });
+
+    CROW_ROUTE(app_, "/api/v1/conveyors/<string>")
+        .methods(crow::HTTPMethod::Patch)
+        .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
+        ([this](const crow::request&     req,
+                crow::response&          res,
+                const std::string&       conveyor_id,
+                AuthMiddleware::context& auth_ctx) {
+            res = Handlers::patchConveyor(req, conveyor_id, auth_ctx, *db_);
             res.end();
         });
 }

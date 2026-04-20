@@ -540,6 +540,29 @@ pqxx::result PostgresConnector::getGranulometryData(
     );
 }
 
+void PostgresConnector::updateConveyorMarker(
+    const std::string& conveyor_id,
+    float              marker_cm) const
+{
+    ScopedConnection conn(pool_);
+    pqxx::work tx(*conn);
+
+    pqxx::result r = tx.exec_params(
+        "UPDATE conveyor_belts "
+        "SET calibration_marker_cm = $1 "
+        "WHERE conveyor_id = $2 "
+        "RETURNING conveyor_id",
+        marker_cm,
+        conveyor_id
+    );
+
+    if (r.empty()) {
+        throw std::runtime_error("Conveyor not found: " + conveyor_id);
+    }
+
+    tx.commit();
+}
+
 // end of RockPulse namespace
 
 }
