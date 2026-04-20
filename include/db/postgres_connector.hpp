@@ -182,6 +182,14 @@ public:
         const std::string& conveyor_id
     ) const;
 
+    // Returns (equiv_diameter, volume_cm3) for all rocks in a job,
+    // ordered ascending by equiv_diameter.
+    // The conveyor_id JOIN enforces that the caller's token owns the job.
+    pqxx::result getGranulometryData(
+        const std::string& job_id,
+        const std::string& conveyor_id
+    ) const;
+
 
     private:
     DBConfig                    config_;

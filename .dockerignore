@@ -1,6 +1,10 @@
-build/
 ort/
-outputs/
-.vscode/
+build/
+frontend/
 .git/
-frontend/node_modules/
+.env
+data/
+logs/
+outputs/
+inputs/
+.vscode/

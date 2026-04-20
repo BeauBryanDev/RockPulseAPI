@@ -521,6 +521,25 @@ ConveyorRow PostgresConnector::getConveyorById(
 
 }
 
-// end of RockPulse namespace 
+pqxx::result PostgresConnector::getGranulometryData(
+    const std::string& job_id,
+    const std::string& conveyor_id) const
+{
+    ScopedConnection conn(pool_);
+    pqxx::read_transaction tx(*conn);
+
+    return tx.exec_params(
+        "SELECT r.equiv_diameter, r.volume_cm3 "
+        "FROM rock_detections r "
+        "JOIN detection_jobs j ON j.job_id = r.job_id "
+        "WHERE r.job_id    = $1 "
+        "  AND j.conveyor_id = $2 "
+        "ORDER BY r.equiv_diameter ASC",
+        job_id,
+        conveyor_id
+    );
+}
+
+// end of RockPulse namespace
 
 }
