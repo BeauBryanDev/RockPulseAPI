@@ -85,15 +85,6 @@ static RockMetrics compute(
         const FIParams&     fi_params   // alpha , beta , gamma from particular inner location mining metrics 
     );
 
-    static RockMetrics compute(
-        const cv::Mat&      bin_mask,
-        const cv::Rect&     bbox,
-        float               confidence,
-        int                 rock_id,
-        float               k,
-        float               density,
-        const FIParams&     fi_params
-    );
     // Uses cv::fitEllipse on the largest contour to get
     // rotation-aware major/minor axes. More precise than
     // minAreaRect for irregular rock shapes.

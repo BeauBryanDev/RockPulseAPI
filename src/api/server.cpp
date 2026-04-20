@@ -120,9 +120,8 @@ void Server::registerRoutes()
     CROW_ROUTE(app_, "/api/v1/detect")
         .methods(crow::HTTPMethod::Post)
         .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
-        ([this](const crow::request&     req,
-                crow::response&          res,
-                AuthMiddleware::context& auth_ctx) {
+        ([this](const crow::request& req, crow::response& res) {
+            auto& auth_ctx = app_.get_context<AuthMiddleware>(req);
             res = Handlers::detect(req, auth_ctx, *detector_, *db_, server_cfg_);
             res.end();
         });
@@ -130,9 +129,8 @@ void Server::registerRoutes()
     CROW_ROUTE(app_, "/api/v1/detections")
         .methods(crow::HTTPMethod::Get)
         .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
-        ([this](const crow::request&     req,
-                crow::response&          res,
-                AuthMiddleware::context& auth_ctx) {
+        ([this](const crow::request& req, crow::response& res) {
+            auto& auth_ctx = app_.get_context<AuthMiddleware>(req);
             res = Handlers::listDetections(req, auth_ctx, *db_);
             res.end();
         });
@@ -140,10 +138,9 @@ void Server::registerRoutes()
     CROW_ROUTE(app_, "/api/v1/detections/<string>")
         .methods(crow::HTTPMethod::Get)
         .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
-        ([this](const crow::request&     req,
-                crow::response&          res,
-                const std::string&       job_id,
-                AuthMiddleware::context& auth_ctx) {
+        ([this](const crow::request& req, crow::response& res,
+                const std::string& job_id) {
+            auto& auth_ctx = app_.get_context<AuthMiddleware>(req);
             res = Handlers::getDetection(req, job_id, auth_ctx, *db_);
             res.end();
         });
@@ -151,10 +148,9 @@ void Server::registerRoutes()
     CROW_ROUTE(app_, "/api/v1/analytics/granulometry/<string>")
         .methods(crow::HTTPMethod::Get)
         .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
-        ([this](const crow::request&     req,
-                crow::response&          res,
-                const std::string&       job_id,
-                AuthMiddleware::context& auth_ctx) {
+        ([this](const crow::request& req, crow::response& res,
+                const std::string& job_id) {
+            auto& auth_ctx = app_.get_context<AuthMiddleware>(req);
             res = Handlers::granulometry(req, job_id, auth_ctx, *db_);
             res.end();
         });
@@ -162,10 +158,9 @@ void Server::registerRoutes()
     CROW_ROUTE(app_, "/api/v1/conveyors/<string>")
         .methods(crow::HTTPMethod::Patch)
         .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
-        ([this](const crow::request&     req,
-                crow::response&          res,
-                const std::string&       conveyor_id,
-                AuthMiddleware::context& auth_ctx) {
+        ([this](const crow::request& req, crow::response& res,
+                const std::string& conveyor_id) {
+            auto& auth_ctx = app_.get_context<AuthMiddleware>(req);
             res = Handlers::patchConveyor(req, conveyor_id, auth_ctx, *db_);
             res.end();
         });

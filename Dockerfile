@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     libssl-dev \
     nlohmann-json3-dev \
+    libasio-dev \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

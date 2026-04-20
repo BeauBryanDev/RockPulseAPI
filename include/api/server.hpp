@@ -19,7 +19,7 @@ struct ServerConfig {
     std::string log_level   = "info";
 };
 
-struct AuthMiddleware {
+struct AuthMiddleware : public crow::ILocalMiddleware {
 
     struct context {
         TokenValidation token_validation;
@@ -40,7 +40,7 @@ struct AuthMiddleware {
     std::shared_ptr<PostgresConnector> db;
 };
 
-struct CorsMiddleware {
+struct CorsMiddleware : public crow::ILocalMiddleware {
 
     struct context {};
 

@@ -1,5 +1,4 @@
 #include "utils/image_utils.hpp"
-#include <opencv2/objdetect/aruco_detector.hpp>
 #include <iostream>
 #include <cmath>
 
@@ -36,30 +35,25 @@ CalibrationResult detectCalibrationMarker(
         gray = image.clone();
     }
 
-    // 2. Build ArUco detector
-    // ArucoDetector is the modern API (OpenCV 4.7+).
-
-    cv::aruco::Dictionary dictionary =
+    cv::Ptr<cv::aruco::Dictionary> dictionary =
         cv::aruco::getPredefinedDictionary(dictionary_id);
 
-    cv::aruco::DetectorParameters params =
-        cv::aruco::DetectorParameters();
+    cv::Ptr<cv::aruco::DetectorParameters> params =
+        cv::aruco::DetectorParameters::create();
 
     // Improve detection under uneven belt lighting
-    params.adaptiveThreshWinSizeMin  = 3;
-    params.adaptiveThreshWinSizeMax  = 53;
-    params.adaptiveThreshWinSizeStep = 10;
-    params.minMarkerPerimeterRate    = 0.02f;
-    params.maxMarkerPerimeterRate    = 0.5f;
-    params.polygonalApproxAccuracyRate = 0.05f;
-
-    cv::aruco::ArucoDetector detector(dictionary, params);
+    params->adaptiveThreshWinSizeMin    = 3;
+    params->adaptiveThreshWinSizeMax    = 53;
+    params->adaptiveThreshWinSizeStep   = 10;
+    params->minMarkerPerimeterRate      = 0.02f;
+    params->maxMarkerPerimeterRate      = 0.5f;
+    params->polygonalApproxAccuracyRate = 0.05f;
 
     std::vector<std::vector<cv::Point2f>> corners;
     std::vector<int>                      ids;
     std::vector<std::vector<cv::Point2f>> rejected;
 
-    detector.detectMarkers(gray, corners, ids, rejected);
+    cv::aruco::detectMarkers(gray, dictionary, corners, ids, params, rejected);
 
     if (ids.empty()) {
 

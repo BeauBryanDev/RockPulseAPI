@@ -289,33 +289,6 @@ cv::Mat MetrologyEngine::buildFeatureMatrix(
 
 }
 
-cv::Mat MetrologyEngine::buildFeatureMatrix(
-
-    const std::vector<RockMetrics>& rocks)
-{
-    const int n_rocks    = static_cast<int>(rocks.size());
-    const int n_features = 6;
-
-    cv::Mat matrix(n_rocks, n_features, CV_32F);
-
-    for (int i = 0; i < n_rocks; ++i) {
-
-        const auto& r = rocks[i];
-
-        matrix.at<float>(i, 0) = static_cast<float>(r.equiv_diameter);
-        matrix.at<float>(i, 1) = static_cast<float>(r.sphericity);
-        matrix.at<float>(i, 2) = r.aspect_ratio;
-        matrix.at<float>(i, 3) = static_cast<float>(r.convexity);
-        matrix.at<float>(i, 4) = static_cast<float>(r.solidity);
-        matrix.at<float>(i, 5) = r.volume_cm3;
-    }
-
-    normalizeMatrix(matrix);
-
-    return matrix;
-
-}
-
 void MetrologyEngine::normalizeMatrix(cv::Mat& matrix)
 {
     for (int col = 0; col < matrix.cols; ++col) {

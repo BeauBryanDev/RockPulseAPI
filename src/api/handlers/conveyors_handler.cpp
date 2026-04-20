@@ -1,5 +1,4 @@
 #include "api/handlers/conveyors_handler.hpp"
-#include <crow/json.h>
 #include <iostream>
 
 namespace RockPulse {

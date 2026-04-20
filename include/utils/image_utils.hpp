@@ -1,7 +1,7 @@
 #pragma once
 
 #include <opencv2/opencv.hpp>
-#include <opencv2/objdetect/aruco_detector.hpp>
+#include <opencv2/aruco.hpp>
 #include <optional>
 #include <string>
 

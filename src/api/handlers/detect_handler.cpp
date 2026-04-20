@@ -1,6 +1,5 @@
 #include "api/handlers/detect_handler.hpp"
 #include "utils/image_utils.hpp"
-#include <crow/multipart.h>
 #include <opencv2/imgcodecs.hpp>
 #include <filesystem>
 #include <fstream>
