@@ -43,7 +43,7 @@ struct Histogram {
 // centroids: one row per cluster, columns = feature order
 struct ClusterResult {
     std::vector<int>    cluster_labels;   // size == rocks.size()
-    int     num_clusters = 3;
+    int     num_clusters = 0;
     double  compactness  = 0.0;
 
     // Centroid coords in PCA-reduced 2D space for scatter plot

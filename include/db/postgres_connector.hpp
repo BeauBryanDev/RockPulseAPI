@@ -143,19 +143,20 @@ public:
         const std::string& output_path
     ) const;
 
-    // Bulk inserts all RockMetrics for one job in a single
-    // transaction using pqxx::stream_to for maximum throughput.
-    // Returns number of rows inserted.
-    int insertRockDetections(
+    // Bulk inserts all RockMetrics for one job in a single transaction.
+    // Returns the DB-generated IDs (bigserial) in insertion order,
+    // needed by insertClusterResults to populate rock_clusters.rock_id.
+    std::vector<int64_t> insertRockDetections(
         const std::string&              job_id,
         const std::vector<RockMetrics>& rocks
     ) const;
 
     // Inserts rock_clusters and cluster_centroids for one job.
-    // Called after KMeans completes in MetrologyEngine.
+    // rock_ids must match result.cluster_labels index-for-index.
     void insertClusterResults(
-        const std::string& job_id,
-        const ClusterResult& result
+        const std::string&          job_id,
+        const ClusterResult&        result,
+        const std::vector<int64_t>& rock_ids
     ) const;
 
     // Returns full detection payload for GET /api/detections/{job_id}

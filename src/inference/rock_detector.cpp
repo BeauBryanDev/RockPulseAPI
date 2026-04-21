@@ -188,7 +188,6 @@ cv::Mat RockDetector::assembleMask(
 
     // Resize to original image dimensions
     cv::Mat mask_full;
-    cv::resize(mask_full, mask_full, cv::Size(orig_w, orig_h));
     cv::resize(mask_160, mask_full, cv::Size(orig_w, orig_h));
 
     // Crop to bounding box ROI and threshold to binary

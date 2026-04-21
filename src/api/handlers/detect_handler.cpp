@@ -238,22 +238,26 @@ crow::json::wvalue buildDetectResponse(
 
     scatter.reserve(result.rocks.size());
 
+    const bool has_clustering = !report.clustering.cluster_labels.empty()
+                              && report.clustering.pca_x.size() == result.rocks.size();
+
     for (std::size_t i = 0; i < result.rocks.size(); ++i) {
 
         crow::json::wvalue pt;
 
         pt["rock_id"] = result.rocks[i].rock_id;
-        pt["x"]       = report.clustering.pca_x[i];
-        pt["y"]       = report.clustering.pca_y[i];
-        pt["cluster"] = report.clustering.cluster_labels[i];
 
-        if (i < report.clustering.cluster_names.size()) {
+        if (has_clustering) {
+            pt["x"]       = report.clustering.pca_x[i];
+            pt["y"]       = report.clustering.pca_y[i];
+            pt["cluster"] = report.clustering.cluster_labels[i];
 
-            pt["cluster_name"] =
-                report.clustering.cluster_names[
-                    report.clustering.cluster_labels[i]
-                ];
+            int lbl = report.clustering.cluster_labels[i];
+            if (lbl < static_cast<int>(report.clustering.cluster_names.size())) {
+                pt["cluster_name"] = report.clustering.cluster_names[lbl];
+            }
         }
+
         scatter.push_back(std::move(pt));
     }
     clustering["scatter"] = std::move(scatter);
@@ -262,7 +266,11 @@ crow::json::wvalue buildDetectResponse(
 
     centroids.reserve(static_cast<std::size_t>(report.clustering.num_clusters));
 
-    for (int k = 0; k < report.clustering.num_clusters; ++k) {
+    const int safe_k = static_cast<int>(
+        std::min(report.clustering.centroid_pca_x.size(),
+                 report.clustering.centroid_pca_y.size()));
+
+    for (int k = 0; k < safe_k; ++k) {
 
         crow::json::wvalue c;
 
@@ -347,7 +355,9 @@ crow::response detect(
         return crow::response(422, err);
     }
 
-    float k = calib.k;
+    float k = calib.k
+        ? calib.k
+        : conveyor.calibration_marker_cm / 640.0f;
 
     DetectionJob job;
 
@@ -388,8 +398,9 @@ crow::response detect(
         output_path
     );
 
-    db.insertRockDetections(db_job_id, det_result.rocks);
-    db.insertClusterResults(db_job_id, report.clustering);
+    const std::vector<int64_t> rock_ids =
+        db.insertRockDetections(db_job_id, det_result.rocks);
+    db.insertClusterResults(db_job_id, report.clustering, rock_ids);
 
     crow::json::wvalue body = buildDetectResponse(
 

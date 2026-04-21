@@ -79,7 +79,7 @@ namespace  RockPulse {
 
         }  else {
 
-            std::cerr << "[ MetrologyEngine] Not Enoigh rocks for " << num_clusters << "clusters , then skipping." << std::endl;
+            std::cerr << "[ MetrologyEngine] Not Enough rocks for " << num_clusters << " " << "clusters , then skipping." << std::endl;
 
         }
         // Job-level aggregates

@@ -98,6 +98,11 @@ CREATE TABLE rock_detections (
     solidity          REAL NOT NULL,  -- area_px / convex_hull_area_px
     convex_area_px    INT  NOT NULL,  -- area of convex hull in pixels
 
+    -- Ellipse axes from fitEllipse (fallback: OBB axes)
+    major_axis_cm     REAL,
+    minor_axis_cm     REAL,
+    ellipse_angle     REAL,
+
     -- Fragment Index (calibrated per location)
     -- FI = alpha * circularity + beta * solidity + gamma * aspect_ratio
     -- alpha, beta, gamma sourced from locations.fi_alpha/beta/gamma
@@ -105,6 +110,15 @@ CREATE TABLE rock_detections (
 
     created_at        TIMESTAMP DEFAULT NOW()
 );
+
+ALTER TABLE rock_detections ADD COLUMN ellipse_angle real;
+
+ALTER TABLE rock_detections RENAME COLUMN l_cm TO "L_cm";
+ALTER TABLE rock_detections RENAME COLUMN w_cm TO "W_cm";
+ALTER TABLE rock_detections RENAME COLUMN estimate_h_cm TO "estimate_H_cm";
+ALTER TABLE rock_detections ADD COLUMN major_axis_cm real;
+ALTER TABLE rock_detections ADD COLUMN minor_axis_cm real;
+
 
 --  ROCK CLUSTERS (KMeans results per job)
 

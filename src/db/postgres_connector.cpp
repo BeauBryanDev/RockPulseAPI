@@ -182,15 +182,21 @@ TokenValidation PostgresConnector::validateToken(
         pqxx::work tx(*conn);
 
         pqxx::result r = tx.exec_params(
-            "SELECT t.location_id, t.token_id, "
-            "       l.location_id, l.location_code, "
-            "       l.location_name, l.avg_rock_density, "
-            "       l.fi_alpha, l.fi_beta, l.fi_gamma "
-            "FROM api_tokens t "
-            "JOIN locations l ON l.location_id = t.location_id "
-            "WHERE t.token_hash = $1 "
-            "  AND t.is_active  = TRUE "
-            "  AND t.token_exp_date > NOW()",
+            "SELECT "
+            "t.location_id,"
+            "l.location_code, l.location_name,"
+            "l.avg_rock_density,"
+            "l.fi_alpha, l.fi_beta, l.fi_gamma,"
+            "c.conveyor_id, c.conveyor_code,"
+            "c.base_rock_density,"
+            "c.calibration_marker_cm "
+        "FROM api_tokens t "
+        "JOIN locations l      ON l.location_id = t.location_id "
+        "JOIN conveyor_belts c ON c.location_id = t.location_id "
+        "WHERE t.token_hash    = $1 "
+        "AND t.is_active     = TRUE "
+        "AND t.token_exp_date > NOW() "
+        "LIMIT 1",
             token_hash
         );
 
@@ -227,6 +233,16 @@ TokenValidation PostgresConnector::validateToken(
 
         tv.location.fi_gamma =
             r[0]["fi_gamma"].as<float>(0.34f);
+
+        tv.conveyor_id = r[0]["conveyor_id"].as<std::string>();
+
+        tv.conveyor.conveyor_id   = tv.conveyor_id;
+        tv.conveyor.conveyor_code =
+            r[0]["conveyor_code"].as<std::string>();
+        tv.conveyor.base_rock_density =
+            r[0]["base_rock_density"].as<float>(0.0f);
+        tv.conveyor.calibration_marker_cm =
+            r[0]["calibration_marker_cm"].as<float>(30.0f);
 
     } catch (const std::exception& e) {
 
@@ -274,14 +290,14 @@ std::string PostgresConnector::insertDetectionJob(
 }
 
 
-// Uses pqxx::stream_to for bulk insert performance.
-// All rocks for one job in a single transaction.
-int PostgresConnector::insertRockDetections(
+// Bulk inserts RockMetrics via stream_to, then queries back the
+// generated bigserial IDs so the caller can link rock_clusters.rock_id.
+std::vector<int64_t> PostgresConnector::insertRockDetections(
 
     const std::string&   job_id,
     const std::vector<RockMetrics>& rocks) const
 {
-    if (rocks.empty()) return 0;
+    if (rocks.empty()) return {};
 
     ScopedConnection conn(pool_);
     pqxx::work tx(*conn);
@@ -312,7 +328,6 @@ int PostgresConnector::insertRockDetections(
     );
 
     for (const auto& r : rocks) {
-        // fragment_index: use pqxx::null if uncalibrated (-1)
         std::optional<float> fi = (r.fragment_index >= 0.0f)
             ? std::optional<float>(r.fragment_index)
             : std::nullopt;
@@ -340,35 +355,49 @@ int PostgresConnector::insertRockDetections(
     }
 
     stream.complete();
+
+    // stream_to has no RETURNING — query back the IDs in insertion order.
+    // BIGSERIAL is monotonically increasing so ORDER BY id gives insertion order.
+    pqxx::result id_rows = tx.exec_params(
+        "SELECT id FROM rock_detections WHERE job_id = $1::UUID ORDER BY id ASC",
+        job_id
+    );
+
     tx.commit();
 
-    return static_cast<int>(rocks.size());
-    
+    std::vector<int64_t> ids;
+    ids.reserve(id_rows.size());
+    for (const auto& row : id_rows) {
+        ids.push_back(row[0].as<int64_t>());
+    }
+    return ids;
 }
 
 void PostgresConnector::insertClusterResults(
 
-    const std::string&   job_id,
-    const ClusterResult& result) const
+    const std::string&          job_id,
+    const ClusterResult&        result,
+    const std::vector<int64_t>& rock_ids) const
 {
     if (result.cluster_labels.empty()) return;
 
     ScopedConnection conn(pool_);
     pqxx::work tx(*conn);
 
-    // Insert rock_clusters - one row per rock
+    // Insert rock_clusters — one row per rock, with FK to rock_detections.id
     pqxx::stream_to rock_stream = pqxx::stream_to::table(
         tx,
         {"rock_clusters"},
-        {"job_id", "cluster_label"}
+        {"job_id", "rock_id", "cluster_label"}
     );
 
-    for (int label : result.cluster_labels) {
-        rock_stream.write_values(job_id, label);
+    for (std::size_t i = 0; i < result.cluster_labels.size(); ++i) {
+        const int64_t rid = (i < rock_ids.size()) ? rock_ids[i] : 0;
+        rock_stream.write_values(job_id, rid, result.cluster_labels[i]);
     }
     rock_stream.complete();
 
-    // Insert cluster_centroids - one row per cluster
+    // Insert cluster_centroids — one row per cluster
     for (int k = 0; k < result.num_clusters; ++k) {
 
         tx.exec_params(
@@ -381,7 +410,7 @@ void PostgresConnector::insertClusterResults(
             k,
             result.centroid_pca_x[k],
             result.centroid_pca_y[k],
-            0.0,   // centroid_vol reserved for future use
+            0.0,
             static_cast<int>(
                 std::count(
                     result.cluster_labels.begin(),
