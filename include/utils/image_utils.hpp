@@ -21,6 +21,8 @@ struct CalibrationResult {
     float       marker_px     = 0.0f;   // detected marker side in px
     int         marker_id     = -1;     // ArUco marker ID found
     std::string error_msg;
+    std::vector<cv::Point2f> corners;  // corners of the detected marker
+    // TL, TR, BR, BL - needed for drawCalibrationMarker()
 };
 // Detects a single ArUco marker in the image and computes
 // the calibration factor k = marker_real_cm / marker_px.
@@ -39,6 +41,16 @@ cv::Mat decodeImageBytes(const std::string& bytes);
 // are within acceptable bounds for inference.
 
 std::string validateImage(const cv::Mat& image);
+
+// Draws a red bounding box around the detected ArUco marker
+// on the annotated image for visual verification.
+void drawCalibrationMarker(
+    cv::Mat&                  image,
+    const CalibrationResult&  calib_result,
+    const std::vector<cv::Point2f>& marker_corners
+);
+// Called only when CalibrationResult.success == true.
+
 
 }  // namespace ImageUtils
 

@@ -359,6 +359,16 @@ crow::response detect(
         ? calib.k
         : conveyor.calibration_marker_cm / 640.0f;
 
+
+    std::cout << "[DEBUG detect] calibration_marker_cm : "
+          << conveyor.calibration_marker_cm << std::endl;
+    std::cout << "[DEBUG detect] ArUco success         : "
+            << (calib.success ? "YES" : "NO") << std::endl;
+    std::cout << "[DEBUG detect] ArUco marker_px       : "
+            << calib.marker_px << std::endl;
+    std::cout << "[DEBUG detect] k used                : "
+            << k << std::endl;    
+
     DetectionJob job;
 
     job.job_id          = job_id;
@@ -384,11 +394,40 @@ crow::response detect(
         return crow::response(500, err);
     }
 
+    if (calib.success) {
+
+        ImageUtils::drawCalibrationMarker(
+            det_result.output_image,
+            calib,
+            calib.corners
+        );
+    } else {
+        // Fallback to a fixed k value
+        // Draw a warning text on the image when marker was not found
+        cv::putText(
+            det_result.output_image,
+            "WARNING: ArUco marker not detected - k is fallback",
+            cv::Point(10, det_result.output_image.rows - 20),
+            cv::FONT_HERSHEY_SIMPLEX,
+            0.6,
+            cv::Scalar(0, 0, 255),
+            2
+        );
+    }
+
+    const std::string output_path = saveOutputImage(
+
+        cfg.outputs_dir,
+        job_id,
+        det_result.output_image
+    );
+
+
     MetrologyReport report = MetrologyEngine::analyze(det_result.rocks, 3);
 
-    const std::string output_path =
+    /*const std::string output_path =
         saveOutputImage(cfg.outputs_dir, job_id, det_result.output_image);
-
+*/
     const std::string db_job_id = db.insertDetectionJob(
         conveyor.conveyor_id,
         det_result.rock_count,

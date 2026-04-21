@@ -1,26 +1,29 @@
 #include "utils/image_utils.hpp"
 #include <iostream>
+#include <sstream>
+#include <iomanip>
 #include <cmath>
 
 // ArUco marker detection for px->cm calibration
-
 
 namespace  RockPulse {
 
 namespace ImageUtils {
 
 
-// -------------------------------------------------------------
 CalibrationResult detectCalibrationMarker(
     const cv::Mat& image,
-    float          marker_real_cm,
-    int            dictionary_id
+    float   marker_real_cm,
+    int     dictionary_id
+    
 
 )    {
     CalibrationResult result;
 
     if (image.empty()) {
+
         result.error_msg = "Empty image passed to calibration.";
+
         return result;
     }
 
@@ -92,7 +95,7 @@ CalibrationResult detectCalibrationMarker(
         }
     }
 
-    // 5. Compute k from the best marker
+    //  Compute k from the best marker
     // k = marker_real_cm / marker_px
 
     if (best_side_px < 5.0f) {
@@ -110,6 +113,7 @@ CalibrationResult detectCalibrationMarker(
     result.k         = marker_real_cm / best_side_px;
     result.marker_px = best_side_px;
     result.marker_id = ids[best_idx];
+    result.corners =  corners[best_idx];  // TL, TR, BR, BL
 
     std::cout << "[ImageUtils] ArUco marker ID "
             << result.marker_id
@@ -154,6 +158,81 @@ std::string validateImage(const cv::Mat& image)
     }
 
     return "";
+}
+
+void drawCalibrationMarker(
+    cv::Mat&                        image,
+    const CalibrationResult&        calib_result,
+    const std::vector<cv::Point2f>& marker_corners
+
+)  {
+
+    if (!calib_result.success || marker_corners.size() != 4) {
+        return;
+    }
+
+    // Convert Point2f corners to Point for drawing
+    std::vector<cv::Point> pts;
+    pts.reserve(4);
+
+    for (const auto& p : marker_corners) {
+
+        pts.emplace_back(
+            static_cast<int>(p.x),
+            static_cast<int>(p.y)
+        );
+    }
+
+    // Draw the four sides of the marker as a thick red polygon
+    const cv::Scalar RED(0, 0, 255);
+    const int        THICKNESS = 3;
+
+    for (int i = 0; i < 4; ++i) {
+
+        cv::line(image, pts[i], pts[(i + 1) % 4], RED, THICKNESS);
+    }
+
+    // Draw a small circle at each corner for precision check
+    for (const auto& pt : pts) {
+
+        cv::circle(image, pt, 5, RED, -1);
+    }
+
+    // Label above the marker: ID and k value
+    std::ostringstream label;
+    label << "ArUco ID:"  << calib_result.marker_id
+          << "  k="       << std::fixed
+          << std::setprecision(4) << calib_result.k
+          << " cm/px";
+
+    int baseline = 0;
+    cv::Size text_size = cv::getTextSize(
+        label.str(),
+        cv::FONT_HERSHEY_SIMPLEX,
+        0.55, 2, &baseline
+    );
+
+    // Background rectangle for label readability
+    cv::Point label_tl(pts[0].x, pts[0].y - text_size.height - 10);
+    cv::Point label_br(pts[0].x + text_size.width + 6,
+                       pts[0].y - 4);
+
+    // Clamp to image bounds
+    label_tl.x = std::max(0, label_tl.x);
+    label_tl.y = std::max(0, label_tl.y);
+    label_br.x = std::min(image.cols, label_br.x);
+    label_br.y = std::min(image.rows, label_br.y);
+
+    cv::rectangle(image, label_tl, label_br,
+                  cv::Scalar(0, 0, 0), cv::FILLED);
+
+    cv::putText(
+        image,
+        label.str(),
+        cv::Point(label_tl.x + 3, pts[0].y - 6),
+        cv::FONT_HERSHEY_SIMPLEX,
+        0.55, RED, 2
+    );
 }
 
 // end namespaces
