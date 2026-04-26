@@ -137,11 +137,12 @@ crow::json::wvalue buildDetectResponse(
     const MetrologyReport&  report,
     const std::string&      job_id,
     const std::string&      conveyor_id,
-    const std::string&      location_code)
-{
+    const std::string&      location_code
+) {
     crow::json::wvalue body;
 
     body["job_id"]        = job_id;
+    body["output_path"]   = "/outputs/" + job_id + ".png";
     body["conveyor_id"]   = conveyor_id;
     body["location_code"] = location_code;
     body["rock_count"]    = result.rock_count;
@@ -420,6 +421,7 @@ crow::response detect(
         saveOutputImage(cfg.outputs_dir, job_id, det_result.output_image);
 */
     const std::string db_job_id = db.insertDetectionJob(
+        job_id,
         conveyor.conveyor_id,
         det_result.rock_count,
         k,

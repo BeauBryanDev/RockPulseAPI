@@ -47,7 +47,8 @@ bool MetricsCalculator::computeEllipseAxes(
         out_major_cm  = 0.0f;
         out_minor_cm  = 0.0f;
         out_angle_deg = 0.0f;
-        return false;
+        // avoid failure in case of small contour
+        return false; // ellipse not defined for less than 5 points
     }
 
     cv::RotatedRect ellipse = cv::fitEllipse(contour);

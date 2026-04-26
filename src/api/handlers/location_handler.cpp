@@ -39,6 +39,7 @@ crow::json::wvalue serializeLocation(const pqxx::row& row)
         loc["location_longitude"] = row["location_longitude"].as<double>();
 
     loc["created_at"] = row["created_at"].as<std::string>();
+    
     return loc;
 }
 

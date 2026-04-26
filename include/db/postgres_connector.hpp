@@ -22,10 +22,10 @@ namespace RockPulse {
     std::string dbname   = "rockpulse";
     std::string user     = "rockpulse_user";
     std::string password = "";
-    int         pool_size = 4;   // min 4 under concurrent Crow load
+    int     pool_size = 4;   // min 4 under concurrent Crow load
 };
 
-// Twin at the locations table.
+
 // Returned by getLocationByToken() for job context assembly.
 struct LocationRow {
     std::string location_id;
@@ -136,6 +136,7 @@ public:
     // Returns the generated job_id UUID string.
     // Called before rock insertions so job_id FK is valid.
     std::string insertDetectionJob(
+        const std::string& job_id,
         const std::string& conveyor_id,
         int      rock_count,
         float     calibration_k,
@@ -198,9 +199,7 @@ public:
         float              marker_cm
     ) const;
 
-    // -------------------------------------------------------------------------
     // LOCATIONS (CRUD)
-    // -------------------------------------------------------------------------
 
     // Returns all columns for one location, or empty result if not found.
     pqxx::result getLocationById(const std::string& location_id) const;
@@ -241,9 +240,7 @@ public:
     // Deletes a location (CASCADE: conveyors → jobs → detections). Throws if not found.
     void deleteLocation(const std::string& location_id) const;
 
-    // -------------------------------------------------------------------------
     // CONVEYORS (CRUD additions — patchConveyor via updateConveyorMarker above)
-    // -------------------------------------------------------------------------
 
     // Returns all columns for one conveyor, or empty result if not found.
     pqxx::result getConveyorFull(const std::string& conveyor_id) const;
@@ -274,9 +271,7 @@ public:
     // Deletes a conveyor (CASCADE: jobs → detections). Throws if not found.
     void deleteConveyor(const std::string& conveyor_id) const;
 
-    // -------------------------------------------------------------------------
     // TOKENS
-    // -------------------------------------------------------------------------
 
     // Hashes raw_token (SHA-256) and inserts into api_tokens for location_id.
     // The raw token is never stored — caller must save it.

@@ -23,12 +23,15 @@ void CorsMiddleware::before_handle(
     context&        ctx)
 {
     if (req.method == crow::HTTPMethod::Options) {
+
         res.code = 204;
+
         res.add_header("Access-Control-Allow-Origin",  "*");
         res.add_header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
         res.add_header("Access-Control-Allow-Headers",
                        "Content-Type, X-API-KEY, Authorization");
         res.add_header("Access-Control-Max-Age", "86400");
+        
         res.end();
     }
 }
@@ -135,18 +138,17 @@ void Server::run()
 
 void Server::registerRoutes()
 {
-    // -------------------------------------------------------------------------
+
     // Public
-    // -------------------------------------------------------------------------
+
     CROW_ROUTE(app_, "/api/health")
         .methods(crow::HTTPMethod::Get)
         ([this](const crow::request& req) {
             return Handlers::health(req, *detector_, *db_);
         });
 
-    // -------------------------------------------------------------------------
     // Inference
-    // -------------------------------------------------------------------------
+
     CROW_ROUTE(app_, "/api/v1/detect")
         .methods(crow::HTTPMethod::Post)
         .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
@@ -156,9 +158,9 @@ void Server::registerRoutes()
             res.end();
         });
 
-    // -------------------------------------------------------------------------
+
     // Detections (read)
-    // -------------------------------------------------------------------------
+
     CROW_ROUTE(app_, "/api/v1/detections")
         .methods(crow::HTTPMethod::Get)
         .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
@@ -178,9 +180,9 @@ void Server::registerRoutes()
             res.end();
         });
 
-    // -------------------------------------------------------------------------
+
     // Analytics
-    // -------------------------------------------------------------------------
+
     CROW_ROUTE(app_, "/api/v1/analytics/granulometry/<string>")
         .methods(crow::HTTPMethod::Get)
         .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
@@ -191,9 +193,9 @@ void Server::registerRoutes()
             res.end();
         });
 
-    // -------------------------------------------------------------------------
+
     // Locations (full CRUD)
-    // -------------------------------------------------------------------------
+
     CROW_ROUTE(app_, "/api/v1/locations")
         .methods(crow::HTTPMethod::Get, crow::HTTPMethod::Post)
         .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
@@ -226,9 +228,9 @@ void Server::registerRoutes()
             res.end();
         });
 
-    // -------------------------------------------------------------------------
+
     // Conveyors (full CRUD)
-    // -------------------------------------------------------------------------
+
     CROW_ROUTE(app_, "/api/v1/conveyors")
         .methods(crow::HTTPMethod::Get, crow::HTTPMethod::Post)
         .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
@@ -261,9 +263,9 @@ void Server::registerRoutes()
             res.end();
         });
 
-    // -------------------------------------------------------------------------
+
     // Tokens
-    // -------------------------------------------------------------------------
+
     CROW_ROUTE(app_, "/api/v1/tokens")
         .methods(crow::HTTPMethod::Post)
         .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
@@ -271,6 +273,19 @@ void Server::registerRoutes()
             auto& auth_ctx = app_.get_context<AuthMiddleware>(req);
             res = Handlers::createToken(req, auth_ctx, *db_);
             res.end();
+        });
+
+    CROW_ROUTE(app_, "/outputs/<string>")
+        .methods(crow::HTTPMethod::Get)
+        ([this](const crow::request& req, const std::string& filename) {
+            const std::string path = server_cfg_.outputs_dir + "/" + filename;
+            if (!fs::exists(path)) return crow::response(404);
+            std::ifstream f(path, std::ios::binary);
+            std::string body((std::istreambuf_iterator<char>(f)),
+                            std::istreambuf_iterator<char>());
+            crow::response res(200, body);
+            res.set_header("Content-Type", "image/png");
+            return res;
         });
 }
 

@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #050b0d;
+    --foreground: #e0f7fa;
+    --primary: #00f2ff;
+    --primary-glow: rgba(0, 242, 255, 0.5);
+    --border: rgba(0, 242, 255, 0.1);
+  }
+
+  body {
+    @apply bg-background text-foreground overflow-hidden font-sans;
+    background-image:
+      radial-gradient(circle at 50% 50%, rgba(0, 242, 255, 0.02) 0%, transparent 80%),
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.5) 0%, transparent 100%);
+  }
+}
+
+@layer components {
+  .cyber-grid-bg {
+    @apply relative overflow-hidden;
+    background-image: radial-gradient(rgba(0, 242, 255, 0.05) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+
+  .cyber-grid-bg::after {
+    content: "";
+    @apply absolute inset-0 pointer-events-none;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 242, 255, 0.02) 50%),
+      linear-gradient(90deg, rgba(255, 0, 0, 0), rgba(0, 242, 255, 0.01), rgba(0, 0, 255, 0));
+    background-size: 100% 4px, 4px 100%;
+    z-index: 10;
+  }
+
+  .cyber-border {
+    @apply relative border border-primary/20 backdrop-blur-md bg-secondary/40;
+    clip-path: polygon(0 10px, 10px 0,
+        calc(100% - 10px) 0, 100% 10px,
+        100% calc(100% - 10px), calc(100% - 10px) 100%,
+        10px 100%, 0 calc(100% - 10px));
+  }
+
+  .cyber-border::before {
+    content: "";
+    @apply absolute -inset-[1px] bg-gradient-to-br from-primary/40 via-transparent to-primary/40 -z-10;
+    clip-path: polygon(0 10px, 10px 0,
+        calc(100% - 10px) 0, 100% 10px,
+        100% calc(100% - 10px), calc(100% - 10px) 100%,
+        10px 100%, 0 calc(100% - 10px));
+  }
+
+  .cyber-button {
+    @apply px-6 py-2 uppercase tracking-widest text-xs font-bold transition-all duration-300 relative overflow-hidden;
+    @apply bg-primary/10 border border-primary/40 text-primary shadow-neon hover:bg-primary/20 hover:shadow-neon-strong;
+    clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  }
+
+  .text-glow {
+    text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+  }
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-secondary;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-primary/20 rounded-full hover:bg-primary/40 transition-colors;
+}
+
+/* Scanline effect */
+.scanline {
+  width: 100%;
+  height: 100px;
+  z-index: 20;
+  background: linear-gradient(0deg, rgba(0, 0, 0, 0) 0%, rgba(0, 242, 255, 0.05) 50%, rgba(0, 0, 0, 0) 100%);
+  opacity: 0.1;
+  position: absolute;
+  bottom: 100%;
+  animation: scanline 10s linear infinite;
+}
+
+@keyframes scanline {
+  0% {
+    bottom: 100%;
+  }
+
+  80% {
+    bottom: 100%;
+  }
+
+  100% {
+    bottom: -100px;
+  }
+}

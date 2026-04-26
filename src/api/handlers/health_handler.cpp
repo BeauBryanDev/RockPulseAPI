@@ -9,11 +9,10 @@ crow::response health(
     PostgresConnector&      db)
 {
     crow::json::wvalue body;
-    body["status"]   = (detector.isReady() && db.isReady()) ? "ok" : "degraded";
-    body["model"]    = detector.modelName();
-    body["db"]       = db.isReady()       ? "connected" : "error";
-    body["detector"] = detector.isReady() ? "ready"     : "error";
-    body["version"]  = "1.0.0";
+    body["status"]      = detector.isReady() && db.isReady();
+    body["model_ready"] = detector.isReady();
+    body["db_ready"]    = db.isReady();
+    body["version"]     = "1.0.0";
 
     crow::response res(200, body);
     res.set_header("Content-Type", "application/json");

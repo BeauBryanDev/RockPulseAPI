@@ -259,7 +259,7 @@ TokenValidation PostgresConnector::validateToken(
 
 // insertDetectionJob()
 std::string PostgresConnector::insertDetectionJob(
-
+    const std::string& job_id,
     const std::string& conveyor_id,
     int    rock_count,
     float   calibration_k,
@@ -272,10 +272,11 @@ std::string PostgresConnector::insertDetectionJob(
 
     pqxx::result r = tx.exec_params(  // INSERTION QUERY SQL COMMANDS 
         "INSERT INTO detection_jobs "
-        "  (conveyor_id, rock_count, calibration_k, "
+        "  (job_id, conveyor_id, rock_count, calibration_k, "
         "   density, image_path, output_path) "
-        "VALUES ($1, $2, $3, $4, $5, $6) "
+        "VALUES ($1, $2, $3, $4, $5, $6, $7) "
         "RETURNING job_id::TEXT",
+        job_id,
         conveyor_id,
         rock_count,
         calibration_k,
