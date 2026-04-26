@@ -157,14 +157,6 @@ std::vector<std::vector<cv::Point>> contours;
         4.0 * m.area_cm2 / CV_PI
     );
 
-    std::cout << "[DEBUG metrics] rock_id   : " << rock_id   << std::endl;
-    std::cout << "[DEBUG metrics] area_px   : " << m.area_px << std::endl;
-    std::cout << "[DEBUG metrics] L_px      : " << m.L_px    << std::endl;
-    std::cout << "[DEBUG metrics] W_px      : " << m.W_px    << std::endl;
-    std::cout << "[DEBUG metrics] k         : " << k         << std::endl;
-    std::cout << "[DEBUG metrics] area_cm2  : " << m.area_cm2 << std::endl;
-    std::cout << "[DEBUG metrics] L_cm      : " << m.L_cm    << std::endl;
-
     // Ellipsoid: V = (pi/6) * L * W * H
     // Mass: density(kg/m3) * volume_cm3 * 0.001 -> grams
     m.volume_cm3 = static_cast<float>(

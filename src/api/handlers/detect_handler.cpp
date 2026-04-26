@@ -358,16 +358,7 @@ crow::response detect(
     float k = calib.k
         ? calib.k
         : conveyor.calibration_marker_cm / 640.0f;
-
-
-    std::cout << "[DEBUG detect] calibration_marker_cm : "
-          << conveyor.calibration_marker_cm << std::endl;
-    std::cout << "[DEBUG detect] ArUco success         : "
-            << (calib.success ? "YES" : "NO") << std::endl;
-    std::cout << "[DEBUG detect] ArUco marker_px       : "
-            << calib.marker_px << std::endl;
-    std::cout << "[DEBUG detect] k used                : "
-            << k << std::endl;    
+        
 
     DetectionJob job;
 

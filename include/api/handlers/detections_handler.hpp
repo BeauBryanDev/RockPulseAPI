@@ -9,17 +9,19 @@
 namespace RockPulse {
 namespace Handlers {
 
+
+ // List All Detection from a Token ID. 
 crow::response listDetections(
-    const crow::request&        req,
-    AuthMiddleware::context&    auth_ctx,
-    PostgresConnector&          db
+    const crow::request&     req,
+    AuthMiddleware::context&  auth_ctx,
+    PostgresConnector&      db
 );
 
 crow::response getDetection(
-    const crow::request&        req,
-    const std::string&          job_id,
+    const crow::request&   req,
+    const std::string&    job_id,
     AuthMiddleware::context&    auth_ctx,
-    PostgresConnector&          db
+    PostgresConnector&     db
 );
 
 } // namespace Handlers

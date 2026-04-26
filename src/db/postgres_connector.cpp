@@ -592,6 +592,230 @@ void PostgresConnector::updateConveyorMarker(
     tx.commit();
 }
 
+// LOCATIONS
+
+pqxx::result PostgresConnector::getLocationById(
+    const std::string& location_id) const
+{
+    ScopedConnection conn(pool_);
+    pqxx::read_transaction tx(*conn);
+    return tx.exec_params(
+        "SELECT location_id, location_code, location_name, "
+        "       location_description, avg_rock_density, "
+        "       fi_alpha, fi_beta, fi_gamma, "
+        "       location_latitude, location_longitude, "
+        "       created_at::TEXT "
+        "FROM locations WHERE location_id = $1",
+        location_id
+    );
+}
+
+std::string PostgresConnector::insertLocation(
+    const std::string&   code,
+    const std::string&   name,
+    const std::string&   description,
+    std::optional<float> avg_density,
+    float                fi_alpha,
+    float                fi_beta,
+    float                fi_gamma,
+    std::optional<float> latitude,
+    std::optional<float> longitude) const
+{
+    ScopedConnection conn(pool_);
+    pqxx::work tx(*conn);
+    pqxx::result r = tx.exec_params(
+        "INSERT INTO locations "
+        "  (location_code, location_name, location_description, "
+        "   avg_rock_density, fi_alpha, fi_beta, fi_gamma, "
+        "   location_latitude, location_longitude) "
+        "VALUES ($1, $2, NULLIF($3,''), $4, $5, $6, $7, $8, $9) "
+        "RETURNING location_id::TEXT",
+        code, name, description,
+        avg_density, fi_alpha, fi_beta, fi_gamma,
+        latitude, longitude
+    );
+    tx.commit();
+    return r[0][0].as<std::string>();
+}
+
+void PostgresConnector::updateLocation(
+    const std::string&   location_id,
+    const std::string&   name,
+    const std::string&   description,
+    std::optional<float> avg_density,
+    float                fi_alpha,
+    float                fi_beta,
+    float                fi_gamma,
+    std::optional<float> latitude,
+    std::optional<float> longitude) const
+{
+    ScopedConnection conn(pool_);
+    pqxx::work tx(*conn);
+    pqxx::result r = tx.exec_params(
+        "UPDATE locations "
+        "SET location_name = $2, "
+        "    location_description = NULLIF($3,''), "
+        "    avg_rock_density = $4, "
+        "    fi_alpha = $5, fi_beta = $6, fi_gamma = $7, "
+        "    location_latitude = $8, location_longitude = $9 "
+        "WHERE location_id = $1 "
+        "RETURNING location_id",
+        location_id, name, description,
+        avg_density, fi_alpha, fi_beta, fi_gamma,
+        latitude, longitude
+    );
+    tx.commit();
+    if (r.empty())
+        throw std::runtime_error("Location not found: " + location_id);
+}
+
+void PostgresConnector::patchLocationFIParams(
+    const std::string& location_id,
+    float alpha, float beta, float gamma) const
+{
+    ScopedConnection conn(pool_);
+    pqxx::work tx(*conn);
+    pqxx::result r = tx.exec_params(
+        "UPDATE locations "
+        "SET fi_alpha = $1, fi_beta = $2, fi_gamma = $3 "
+        "WHERE location_id = $4 "
+        "RETURNING location_id",
+        alpha, beta, gamma, location_id
+    );
+    tx.commit();
+    if (r.empty())
+        throw std::runtime_error("Location not found: " + location_id);
+}
+
+void PostgresConnector::deleteLocation(
+    const std::string& location_id) const
+{
+    ScopedConnection conn(pool_);
+    pqxx::work tx(*conn);
+    pqxx::result r = tx.exec_params(
+        "DELETE FROM locations WHERE location_id = $1 RETURNING location_id",
+        location_id
+    );
+    tx.commit();
+    if (r.empty())
+        throw std::runtime_error("Location not found: " + location_id);
+}
+
+// CONVEYORS (additional CRUD)
+
+pqxx::result PostgresConnector::getConveyorFull(
+    const std::string& conveyor_id) const
+{
+    ScopedConnection conn(pool_);
+    pqxx::read_transaction tx(*conn);
+    return tx.exec_params(
+        "SELECT conveyor_id, location_id, conveyor_code, "
+        "       base_rock_density, calibration_marker_cm, "
+        "       image_rate_minutes, note_description, created_at::TEXT "
+        "FROM conveyor_belts WHERE conveyor_id = $1",
+        conveyor_id
+    );
+}
+
+pqxx::result PostgresConnector::listConveyorsByLocation(
+    const std::string& location_id) const
+{
+    ScopedConnection conn(pool_);
+    pqxx::read_transaction tx(*conn);
+    return tx.exec_params(
+        "SELECT conveyor_id, location_id, conveyor_code, "
+        "       base_rock_density, calibration_marker_cm, "
+        "       image_rate_minutes, note_description, created_at::TEXT "
+        "FROM conveyor_belts WHERE location_id = $1 "
+        "ORDER BY created_at ASC",
+        location_id
+    );
+}
+
+std::string PostgresConnector::insertConveyor(
+    const std::string&   location_id,
+    const std::string&   code,
+    std::optional<float> base_rock_density,
+    std::optional<float> calibration_marker_cm,
+    std::optional<int>   image_rate_minutes,
+    const std::string&   note) const
+{
+    ScopedConnection conn(pool_);
+    pqxx::work tx(*conn);
+    pqxx::result r = tx.exec_params(
+        "INSERT INTO conveyor_belts "
+        "  (location_id, conveyor_code, base_rock_density, "
+        "   calibration_marker_cm, image_rate_minutes, note_description) "
+        "VALUES ($1, $2, $3, $4, $5, NULLIF($6,'')) "
+        "RETURNING conveyor_id::TEXT",
+        location_id, code,
+        base_rock_density, calibration_marker_cm, image_rate_minutes,
+        note
+    );
+    tx.commit();
+    return r[0][0].as<std::string>();
+}
+
+void PostgresConnector::updateConveyor(
+    const std::string&   conveyor_id,
+    const std::string&   code,
+    std::optional<float> base_rock_density,
+    std::optional<float> calibration_marker_cm,
+    std::optional<int>   image_rate_minutes,
+    const std::string&   note) const
+{
+    ScopedConnection conn(pool_);
+    pqxx::work tx(*conn);
+    pqxx::result r = tx.exec_params(
+        "UPDATE conveyor_belts "
+        "SET conveyor_code = $2, "
+        "    base_rock_density = $3, "
+        "    calibration_marker_cm = $4, "
+        "    image_rate_minutes = $5, "
+        "    note_description = NULLIF($6,'') "
+        "WHERE conveyor_id = $1 "
+        "RETURNING conveyor_id",
+        conveyor_id, code,
+        base_rock_density, calibration_marker_cm, image_rate_minutes,
+        note
+    );
+    tx.commit();
+    if (r.empty())
+        throw std::runtime_error("Conveyor not found: " + conveyor_id);
+}
+
+void PostgresConnector::deleteConveyor(
+    const std::string& conveyor_id) const
+{
+    ScopedConnection conn(pool_);
+    pqxx::work tx(*conn);
+    pqxx::result r = tx.exec_params(
+        "DELETE FROM conveyor_belts WHERE conveyor_id = $1 RETURNING conveyor_id",
+        conveyor_id
+    );
+    tx.commit();
+    if (r.empty())
+        throw std::runtime_error("Conveyor not found: " + conveyor_id);
+}
+
+// TOKENS
+
+void PostgresConnector::insertToken(
+    const std::string& location_id,
+    const std::string& owner_name,
+    const std::string& raw_token) const
+{
+    const std::string hash = hashToken(raw_token);
+    ScopedConnection conn(pool_);
+    pqxx::work tx(*conn);
+    tx.exec_params(
+        "INSERT INTO api_tokens (location_id, token_hash, owner_name) "
+        "VALUES ($1, $2, $3)",
+        location_id, hash, owner_name
+    );
+    tx.commit();
+}
+
 // end of RockPulse namespace
 
 }

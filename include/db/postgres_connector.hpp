@@ -3,6 +3,7 @@
 #include <pqxx/pqxx>
 #include <string>
 #include <vector>
+#include <optional>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -143,13 +144,12 @@ public:
         const std::string& output_path
     ) const;
 
-    // Bulk inserts all RockMetrics for one job in a single transaction.
-    // Returns the DB-generated IDs (bigserial) in insertion order,
+    // Batch inserts all RockMetrics for one job in a single transaction.
     // needed by insertClusterResults to populate rock_clusters.rock_id.
     std::vector<int64_t> insertRockDetections(
         const std::string&              job_id,
         const std::vector<RockMetrics>& rocks
-    ) const;
+    ) const;  // Returns the DB-generated IDs (bigserial) in insertion order,
 
     // Inserts rock_clusters and cluster_centroids for one job.
     // rock_ids must match result.cluster_labels index-for-index.
@@ -198,6 +198,93 @@ public:
         float              marker_cm
     ) const;
 
+    // -------------------------------------------------------------------------
+    // LOCATIONS (CRUD)
+    // -------------------------------------------------------------------------
+
+    // Returns all columns for one location, or empty result if not found.
+    pqxx::result getLocationById(const std::string& location_id) const;
+
+    // Inserts a new location. Returns generated location_id UUID string.
+    // Throws pqxx::sql_error (sqlstate 23505) on duplicate location_code.
+    std::string insertLocation(
+        const std::string&   code,
+        const std::string&   name,
+        const std::string&   description,
+        std::optional<float> avg_density,
+        float                fi_alpha,
+        float                fi_beta,
+        float                fi_gamma,
+        std::optional<float> latitude,
+        std::optional<float> longitude
+    ) const;
+
+    // Full update of mutable location fields. Throws if not found.
+    void updateLocation(
+        const std::string&   location_id,
+        const std::string&   name,
+        const std::string&   description,
+        std::optional<float> avg_density,
+        float                fi_alpha,
+        float                fi_beta,
+        float                fi_gamma,
+        std::optional<float> latitude,
+        std::optional<float> longitude
+    ) const;
+
+    // Updates fi_alpha/beta/gamma only. Throws if not found.
+    void patchLocationFIParams(
+        const std::string& location_id,
+        float alpha, float beta, float gamma
+    ) const;
+
+    // Deletes a location (CASCADE: conveyors → jobs → detections). Throws if not found.
+    void deleteLocation(const std::string& location_id) const;
+
+    // -------------------------------------------------------------------------
+    // CONVEYORS (CRUD additions — patchConveyor via updateConveyorMarker above)
+    // -------------------------------------------------------------------------
+
+    // Returns all columns for one conveyor, or empty result if not found.
+    pqxx::result getConveyorFull(const std::string& conveyor_id) const;
+
+    // Returns all conveyors for a location, ordered by created_at ASC.
+    pqxx::result listConveyorsByLocation(const std::string& location_id) const;
+
+    // Inserts a new conveyor. Returns generated conveyor_id UUID string.
+    std::string insertConveyor(
+        const std::string&   location_id,
+        const std::string&   code,
+        std::optional<float> base_rock_density,
+        std::optional<float> calibration_marker_cm,
+        std::optional<int>   image_rate_minutes,
+        const std::string&   note
+    ) const;
+
+    // Full update of mutable conveyor fields. Throws if not found.
+    void updateConveyor(
+        const std::string&   conveyor_id,
+        const std::string&   code,
+        std::optional<float> base_rock_density,
+        std::optional<float> calibration_marker_cm,
+        std::optional<int>   image_rate_minutes,
+        const std::string&   note
+    ) const;
+
+    // Deletes a conveyor (CASCADE: jobs → detections). Throws if not found.
+    void deleteConveyor(const std::string& conveyor_id) const;
+
+    // -------------------------------------------------------------------------
+    // TOKENS
+    // -------------------------------------------------------------------------
+
+    // Hashes raw_token (SHA-256) and inserts into api_tokens for location_id.
+    // The raw token is never stored — caller must save it.
+    void insertToken(
+        const std::string& location_id,
+        const std::string& owner_name,
+        const std::string& raw_token
+    ) const;
 
     private:
     DBConfig                    config_;

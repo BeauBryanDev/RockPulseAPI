@@ -4,9 +4,12 @@
 #include "api/handlers/detections_handler.hpp"
 #include "api/handlers/granulometry_handler.hpp"
 #include "api/handlers/health_handler.hpp"
+#include "api/handlers/location_handler.hpp"
+#include "api/handlers/tokens_handler.hpp"
 
 #include <filesystem>
 #include <iostream>
+#include <string>
 
 namespace fs = std::filesystem;
 
@@ -22,7 +25,7 @@ void CorsMiddleware::before_handle(
     if (req.method == crow::HTTPMethod::Options) {
         res.code = 204;
         res.add_header("Access-Control-Allow-Origin",  "*");
-        res.add_header("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
+        res.add_header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
         res.add_header("Access-Control-Allow-Headers",
                        "Content-Type, X-API-KEY, Authorization");
         res.add_header("Access-Control-Max-Age", "86400");
@@ -36,7 +39,7 @@ void CorsMiddleware::after_handle(
     context&        ctx)
 {
     res.add_header("Access-Control-Allow-Origin",  "*");
-    res.add_header("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
+    res.add_header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
     res.add_header("Access-Control-Allow-Headers",
                    "Content-Type, X-API-KEY, Authorization");
 }
@@ -49,6 +52,27 @@ void AuthMiddleware::before_handle(
     context&        ctx)
 {
     if (req.url == "/api/health") return;
+
+    // Reject oversized requests before inference or DB work.
+    // Check Content-Length header first (fast path for well-behaved clients).
+    static constexpr std::size_t kMaxBodyBytes = 20ULL * 1024 * 1024;
+    const std::string cl_header = req.get_header_value("Content-Length");
+    if (!cl_header.empty()) {
+        try {
+            if (std::stoll(cl_header) > static_cast<long long>(kMaxBodyBytes)) {
+                res.code = 413;
+                res.write(R"({"error":"Request body exceeds 20 MB limit.","detail":"Maximum allowed size is 20971520 bytes."})");
+                res.end();
+                return;
+            }
+        } catch (...) {}
+    }
+    if (req.body.size() > kMaxBodyBytes) {
+        res.code = 413;
+        res.write(R"({"error":"Request body exceeds 20 MB limit.","detail":"Maximum allowed size is 20971520 bytes."})");
+        res.end();
+        return;
+    }
 
     const std::string raw_token = req.get_header_value("X-API-KEY");
     if (raw_token.empty()) {
@@ -111,12 +135,18 @@ void Server::run()
 
 void Server::registerRoutes()
 {
+    // -------------------------------------------------------------------------
+    // Public
+    // -------------------------------------------------------------------------
     CROW_ROUTE(app_, "/api/health")
         .methods(crow::HTTPMethod::Get)
         ([this](const crow::request& req) {
             return Handlers::health(req, *detector_, *db_);
         });
 
+    // -------------------------------------------------------------------------
+    // Inference
+    // -------------------------------------------------------------------------
     CROW_ROUTE(app_, "/api/v1/detect")
         .methods(crow::HTTPMethod::Post)
         .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
@@ -126,6 +156,9 @@ void Server::registerRoutes()
             res.end();
         });
 
+    // -------------------------------------------------------------------------
+    // Detections (read)
+    // -------------------------------------------------------------------------
     CROW_ROUTE(app_, "/api/v1/detections")
         .methods(crow::HTTPMethod::Get)
         .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
@@ -145,6 +178,9 @@ void Server::registerRoutes()
             res.end();
         });
 
+    // -------------------------------------------------------------------------
+    // Analytics
+    // -------------------------------------------------------------------------
     CROW_ROUTE(app_, "/api/v1/analytics/granulometry/<string>")
         .methods(crow::HTTPMethod::Get)
         .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
@@ -155,13 +191,85 @@ void Server::registerRoutes()
             res.end();
         });
 
-    CROW_ROUTE(app_, "/api/v1/conveyors/<string>")
-        .methods(crow::HTTPMethod::Patch)
+    // -------------------------------------------------------------------------
+    // Locations (full CRUD)
+    // -------------------------------------------------------------------------
+    CROW_ROUTE(app_, "/api/v1/locations")
+        .methods(crow::HTTPMethod::Get, crow::HTTPMethod::Post)
+        .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
+        ([this](const crow::request& req, crow::response& res) {
+            auto& auth_ctx = app_.get_context<AuthMiddleware>(req);
+            if (req.method == crow::HTTPMethod::Post)
+                res = Handlers::createLocation(req, auth_ctx, *db_);
+            else
+                res = Handlers::listLocations(req, auth_ctx, *db_);
+            res.end();
+        });
+
+    CROW_ROUTE(app_, "/api/v1/locations/<string>")
+        .methods(crow::HTTPMethod::Get,
+                 crow::HTTPMethod::Put,
+                 crow::HTTPMethod::Patch,
+                 crow::HTTPMethod::Delete)
         .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
         ([this](const crow::request& req, crow::response& res,
-                const std::string& conveyor_id) {
+                const std::string& loc_id) {
             auto& auth_ctx = app_.get_context<AuthMiddleware>(req);
-            res = Handlers::patchConveyor(req, conveyor_id, auth_ctx, *db_);
+            if (req.method == crow::HTTPMethod::Get)
+                res = Handlers::getLocation(req, loc_id, auth_ctx, *db_);
+            else if (req.method == crow::HTTPMethod::Put)
+                res = Handlers::updateLocation(req, loc_id, auth_ctx, *db_);
+            else if (req.method == crow::HTTPMethod::Patch)
+                res = Handlers::patchLocationFI(req, loc_id, auth_ctx, *db_);
+            else
+                res = Handlers::deleteLocation(req, loc_id, auth_ctx, *db_);
+            res.end();
+        });
+
+    // -------------------------------------------------------------------------
+    // Conveyors (full CRUD)
+    // -------------------------------------------------------------------------
+    CROW_ROUTE(app_, "/api/v1/conveyors")
+        .methods(crow::HTTPMethod::Get, crow::HTTPMethod::Post)
+        .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
+        ([this](const crow::request& req, crow::response& res) {
+            auto& auth_ctx = app_.get_context<AuthMiddleware>(req);
+            if (req.method == crow::HTTPMethod::Post)
+                res = Handlers::createConveyor(req, auth_ctx, *db_);
+            else
+                res = Handlers::listConveyors(req, auth_ctx, *db_);
+            res.end();
+        });
+
+    CROW_ROUTE(app_, "/api/v1/conveyors/<string>")
+        .methods(crow::HTTPMethod::Get,
+                 crow::HTTPMethod::Put,
+                 crow::HTTPMethod::Patch,
+                 crow::HTTPMethod::Delete)
+        .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
+        ([this](const crow::request& req, crow::response& res,
+                const std::string& conv_id) {
+            auto& auth_ctx = app_.get_context<AuthMiddleware>(req);
+            if (req.method == crow::HTTPMethod::Get)
+                res = Handlers::getConveyor(req, conv_id, auth_ctx, *db_);
+            else if (req.method == crow::HTTPMethod::Put)
+                res = Handlers::updateConveyor(req, conv_id, auth_ctx, *db_);
+            else if (req.method == crow::HTTPMethod::Patch)
+                res = Handlers::patchConveyor(req, conv_id, auth_ctx, *db_);
+            else
+                res = Handlers::deleteConveyor(req, conv_id, auth_ctx, *db_);
+            res.end();
+        });
+
+    // -------------------------------------------------------------------------
+    // Tokens
+    // -------------------------------------------------------------------------
+    CROW_ROUTE(app_, "/api/v1/tokens")
+        .methods(crow::HTTPMethod::Post)
+        .CROW_MIDDLEWARES(app_, CorsMiddleware, AuthMiddleware)
+        ([this](const crow::request& req, crow::response& res) {
+            auto& auth_ctx = app_.get_context<AuthMiddleware>(req);
+            res = Handlers::createToken(req, auth_ctx, *db_);
             res.end();
         });
 }
